@@ -29,7 +29,8 @@ import (
 )
 
 var (
-	startPrefixes = []string{"// Copyright", "// copyright", "// Licensed", "// licensed"}
+	buildPrefixes = []string{"// +build "}
+	startPrefixes = []string{"// Copyright", "// copyright", "// Licensed", "// licensed", "/*", "// MinIO Cloud", "// Mint", "// This file is part"}
 	endPrefixes   = []string{"package ", "// Package ", "// +build ", "// Code generated", "// code generated"}
 
 	errHeaderIsTooShort = errors.New("header is too short")
@@ -93,8 +94,19 @@ func headerBytes(r io.Reader) []byte {
 	var scanner = bufio.NewScanner(r)
 	var replaceableHeader []byte
 	var continuedHeader bool
+	var j int64
+scan:
 	for scanner.Scan() {
 		var t = scanner.Text()
+		j++
+		// Skip build prefixes only if they are on first line
+		if j == 1 {
+			for i := range buildPrefixes {
+				if strings.HasPrefix(t, buildPrefixes[i]) {
+					goto scan
+				}
+			}
+		}
 
 		for i := range endPrefixes {
 			if strings.HasPrefix(t, endPrefixes[i]) {
